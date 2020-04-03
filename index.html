@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>UTM Builder</title>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <script src="https://use.fontawesome.com/releases/v5.13.0/js/all.js" data-auto-a11y="true"></script>
+  </head>
+  <body class="container-fluid pt-5">
+
+    <h1>UTM Builder</h1>
+
+    <div class="mb-4 form-inline" id="formulaire">
+      <div class="mr-1">
+        <input type="text" class="form-control" name="titre" value="" placeholder="Nom de la campagne">
+
+        <select class="form-control" name="marque">
+          <option value="CM">Crédit Mutuel</option>
+          <option value="CIC">CIC</option>
+        </select>
+
+        <select class="form-control" name="marche">
+          <option value="PAR">Particuliers</option>
+          <option value="PRO">Professionnels</option>
+          <option value="AGRI">Agriculteurs</option>
+          <option value="OBNL">Associations</option>
+        </select>
+
+        <select class="form-control" name="annee">
+          <option value="2020">2020</option>
+          <option value="2021">2021</option>
+        </select>
+
+        <select class="form-control" name="mois">
+          <option value="01">janvier</option>
+          <option value="02">février</option>
+          <option value="03">mars</option>
+          <option value="04">avril</option>
+          <option value="05">mai</option>
+          <option value="06">juin</option>
+          <option value="07">juillet</option>
+          <option value="08">août</option>
+          <option value="09">septembre</option>
+          <option value="10">octobre</option>
+          <option value="11">novembre</option>
+          <option value="12">décembre</option>
+        </select>
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="createNewCampaign()">Nouvelle campagne</button>
+    </div>
+
+    <div class="alert alert-danger d-none" role="alert" id="msgAlert">Cette campagne existe déjà</div>
+
+    <div class="accordion" id="accordion">
+
+    </div>
+
+  </body>
+  <footer>
+    <script type="text/javascript">
+      const storage = {
+        save(key, value) {
+          return localStorage.setItem(key, JSON.stringify(value));
+        },
+
+        retrieve(key) {
+          var data = localStorage.getItem(key);
+
+          if (!data) {
+            this.save(key, []);
+            data = '[]';
+          }
+
+          data = JSON.parse(data);
+
+          return data;
+        }
+      };
+
+      function createElement(parent, elt, options) {
+        var elt = document.createElement(elt);
+
+        if (options) {
+          Object.entries(options).forEach(option => {
+            var key = option[0];
+            var value = option[1];
+
+            if (key === 'innerHTML') {
+              elt.innerHTML = value;
+            } else {
+              elt.setAttribute(key, value);
+            }
+          });
+        }
+
+        return parent.appendChild(elt);
+      }
+
+      function camelize(str) {
+        str = str.replace(/(ç)/g, "c")
+                 .replace(/(é|è|ê|È|É|Ê)/g, "e")
+                 .replace(/(à|â|ä|À)/g, "a")
+                 .replace(/(î|ï)/g, "i")
+                 .replace(/(\W+|_)/g, " ");
+
+        str = str.toLowerCase().replace(/(?:^\w|\b\w)/g, function(letter, index) {
+            return letter.toUpperCase();
+        }).replace(/\s+/g, "");
+
+        return str;
+      }
+
+      function download(id) {
+        const data = [['URLs']];
+
+        const rows = document.querySelectorAll(`div[data-campaign=${id}] > table > tbody > tr`);
+
+        rows.forEach(row => {
+          let url = row.querySelector('td:nth-child(3)').innerText;
+          url = url.replace(/\&amp;/gi, '26');
+          data.push([url]);
+        });
+
+        console.log(data);
+
+        let csvContent = "data:text/csv;charset=utf-8,"
+          + data.map(e => e.join(",")).join("\n");
+
+        var encodedUri = encodeURI(csvContent);
+
+        window.open(encodedUri);
+      }
+
+      function createNewCampaign() {
+        const frm = document.querySelector('#formulaire');
+
+        const obj = {
+          'id': '',
+          'title': frm.querySelector('input[name="titre"]').value,
+          'market': frm.querySelector('select[name="marche"]').value,
+          'brand': frm.querySelector('select[name="marque"]').value,
+          'year': frm.querySelector('select[name="annee"]').value,
+          'month': frm.querySelector('select[name="mois"]').value,
+          'links': []
+        };
+
+        obj.id = obj.brand + "_" + obj.market + "_" + obj.year + "-" + obj.month + "_" + camelize(obj.title);
+
+        var campaigns = storage.retrieve('campaigns');
+
+        if (!campaigns.find(campaign => campaign.id === obj.id)) {
+          injectNewCampaign(obj);
+
+          // Save new campaign
+          campaigns = campaigns.concat(obj);
+          storage.save('campaigns', campaigns);
+
+          // Reset form
+          frm.querySelector('input[name="titre"]').value = "";
+          frm.querySelector('input[name="titre"]').class = "form-control";
+
+          // Hide error
+          document.querySelector('#msgAlert').className = "alert alert-danger d-none";
+        } else {
+          // Display error
+          frm.querySelector('input[name="titre"]').className = "form-control is-invalid";
+          document.querySelector('#msgAlert').className = "alert alert-danger";
+        }
+      }
+
+      function injectNewCampaign(obj) {
+        const h = "h_" + obj.id;
+        const c = "c_" + obj.id;
+
+        const accordion = document.querySelector('#accordion');
+
+        var card = createElement(accordion, 'div', { 'class': 'card' });
+          var header = createElement(card, 'div', { 'class': 'card-header', 'id': h });
+            var h5 = createElement(header, 'h5', { 'class': 'mb-0' });
+              var button = createElement(h5, 'button', {
+                'class': 'btn btn-link collapsed',
+                'type': 'button',
+                'data-toggle': 'collapse',
+                'data-target': '#' + c,
+                'aria-expanded': 'false',
+                'aria-controls': 'collapse',
+                'innerHTML': obj.id
+              });
+
+          var collapse = createElement(card, 'div', { 'class': 'collapse', 'id': c, 'aria-labelledby': h, 'data-parent': '#accordion' });
+            var body = createElement(collapse, 'div', { 'class': 'card-body container-fluid', 'data-campaign': obj.id });
+
+              var form = createElement(body, 'div', { 'class': 'form-inline mb-2' });
+                var source = createElement(form, 'select', { 'class': 'form-control mr-1', 'name': 'source' });
+                  var email = createElement(source, 'option', { 'value': 'email', 'innerHTML': 'email' });
+                  var newsletter = createElement(source, 'option', { 'value': 'newsletter', 'innerHTML': 'newsletter' });
+                  var signature = createElement(source, 'option', { 'value': 'signature', 'innerHTML': 'signature' });
+                  var sms = createElement(source, 'option', { 'value': 'sms', 'innerHTML': 'sms' });
+                  var print = createElement(source, 'option', { 'value': 'print', 'innerHTML': 'print' });
+                var url = createElement(form, 'input', { 'class': 'form-control mr-1', 'type': 'text', 'name': 'url', 'placeholder': 'https://www...', 'style': 'width: 40%' });
+                var valider = createElement(form, 'button', { 'class': 'btn btn-primary', 'type': 'button', 'onclick': 'createNewLink(this.parentElement)', 'innerHTML': 'Nouveau lien' });
+
+              var table = createElement(body, 'table', { 'class': 'table table-sm table-hover' });
+                var thead = createElement(table, 'thead', { 'class': 'thead-light' });
+                  var tr = createElement(thead, 'tr');
+                    var th1 = createElement(tr, 'th', { 'scope': 'col', 'style': 'width: 3%', 'innerHTML': '#' });
+                    var th2 = createElement(tr, 'th', { 'scope': 'col', 'style': 'width: 7%', 'innerHTML': 'Source' });
+                    var th3 = createElement(tr, 'th', { 'scope': 'col', 'innerHTML': 'Lien' });
+                    var th4 = createElement(tr, 'th', { 'scope': 'col', 'style': 'width: 5%', 'innerHTML': '' });
+                var tbody = createElement(table, 'tbody');
+                  if (obj.links.length !== 0) obj.links.forEach(link => injectNewLink(tbody, link, obj.id));
+
+              var download = createElement(body, 'button', { 'class': 'btn btn-light btn-sm', 'type': 'button', 'onclick': `download('${obj.id}')`, 'innerHTML': 'Télécharger' });
+                var icon = createElement(download, 'i', { 'class': 'fas fa-download ml-1' });
+      }
+
+      function createNewLink(elt) {
+        const url = elt.querySelector('input[name="url"]').value;
+
+        // Check url
+        const isUrlValid = url.match(new RegExp("^http[s]?:\/{2}"));
+
+        if (isUrlValid) {
+          // Get campaign id
+          var id = elt.parentElement.getAttribute('data-campaign');
+
+          // Extract page only (delete parameters and anchor)
+          var page = url.split(new RegExp('(\\?|\\#)'))[0];
+
+          // Extract parameters
+          var parameters = url.split('?')[1] || '';
+          parameters = parameters.split('#')[0] || parameters;
+
+          // Extrat anchor
+          var anchor = url.split('#')[1] || '';
+
+          var obj = {
+            'source': elt.querySelector('select[name="source"]').value,
+            'page': page,
+            'parameters': parameters,
+            'anchor': anchor,
+            'url': '' // with UTM
+          }
+
+          // Build url with UTM
+          obj.url = obj.page + "?utm_source=" + obj.source + "&utm_medium=" + obj.source + "&utm_campaign=" + id;
+          if (obj.parameters !== '') obj.url = obj.url + "&" + obj.parameters;
+          if (obj.anchor !== '') obj.url = obj.url + "#" + obj.anchor;
+
+          // Create new row
+          injectNewLink(elt.parentElement.querySelector('table > tbody'), obj, id);
+
+          // Save new link
+          var campaigns = storage.retrieve('campaigns');
+
+          var campaign = campaigns.find(campaign => campaign.id === id);
+          campaign.links.push(obj);
+
+          storage.save('campaigns', campaigns);
+
+          // Reset form
+          elt.querySelector('input[name="url"]').value = "";
+          elt.querySelector('input[name="url"]').className = "form-control mr-1";
+        } else {
+          // Display error
+          elt.querySelector('input[name="url"]').className = "form-control is-invalid mr-1";
+        }
+      }
+
+      function injectNewLink(table, obj, id) {
+        // Count how many rows already existing
+        var rows = table.querySelectorAll('tr');
+
+        // Create new row
+        var tr = createElement(table, 'tr');
+          var num = createElement(tr, 'td', { 'style': 'font-size: .85em', 'innerHTML': rows.length + 1 });
+          var source = createElement(tr, 'td', { 'style': 'font-size: .85em', 'innerHTML': obj.source });
+          var url = createElement(tr, 'td', { 'style': 'font-size: .85em', 'innerHTML': obj.url });
+          var deleteColumn = createElement(tr, 'td', {});
+          var deleteBtn = createElement(deleteColumn, 'button', {
+            'style': 'font-size: .85em',
+            'onclick': `deleteLink('${id}', ${rows.length})`,
+            'innerHTML': 'Supprimer'
+          });
+      }
+
+      function deleteLink(id, index) {
+        console.log(id, index);
+
+        var campaigns = storage.retrieve('campaigns');
+
+        var campaign = campaigns.find(campaign => campaign.id === id);
+
+        index === 0 ? campaign.links.shift() : campaign.links.splice(index, index);
+
+        var rows = document.querySelectorAll(`div[data-campaign=${id}] > table > tbody > tr`);
+        rows[index].remove();
+
+        rows = document.querySelectorAll(`div[data-campaign=${id}] > table > tbody > tr`);
+
+        rows.forEach((row, i) => {
+          row.querySelector('td:first-child').innerHTML = i + 1;
+          row.querySelector('td:last-child > button').setAttribute('onclick', `deleteLink('${id}', ${i})`);
+        });
+
+        storage.save('campaigns', campaigns);
+      }
+
+      function load() {
+        var campaigns = localStorage.getItem('campaigns');
+        if (campaigns) {
+          campaigns = JSON.parse(campaigns);
+          campaigns.forEach(campaign => injectNewCampaign(campaign));
+        }
+      }
+
+      load();
+    </script>
+  </footer>
+</html>
