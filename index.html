@@ -10,6 +10,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
     <script src="https://use.fontawesome.com/releases/v5.13.0/js/all.js" data-auto-a11y="true"></script>
+    <style media="screen">
+      .url {
+        font-size: .85em;
+        padding: .5rem .3em 1em .3em;
+      }
+
+      .url:hover {
+        cursor: pointer;
+        text-decoration: underline;
+      }
+    </style>
   </head>
   <body class="container-fluid pt-5">
 
@@ -183,20 +194,28 @@
         var card = createElement(accordion, 'div', { 'class': 'card' });
           var header = createElement(card, 'div', { 'class': 'card-header', 'id': h });
             var h5 = createElement(header, 'h5', { 'class': 'mb-0' });
-              var button = createElement(h5, 'button', {
+              var title = createElement(h5, 'button', {
                 'class': 'btn btn-link collapsed',
                 'type': 'button',
                 'data-toggle': 'collapse',
                 'data-target': '#' + c,
                 'aria-expanded': 'false',
                 'aria-controls': 'collapse',
+                'style': 'float: left',
                 'innerHTML': obj.id
               });
+              var deleteBtn = createElement(header, 'button', {
+                'style': 'float: right; padding: 6px 8px',
+                'onclick': `deleteCampaign('${obj.id}')`,
+                'innerHTML': 'Supprimer'
+              });
+
 
           var collapse = createElement(card, 'div', { 'class': 'collapse', 'id': c, 'aria-labelledby': h, 'data-parent': '#accordion' });
             var body = createElement(collapse, 'div', { 'class': 'card-body container-fluid', 'data-campaign': obj.id });
 
               var form = createElement(body, 'div', { 'class': 'form-inline mb-2' });
+                var description = createElement(form, 'input', { 'class': 'form-control mr-1', 'type': 'text', 'name': 'description', 'placeholder': 'Description si besoin', 'style': 'width: 17%' });
                 var source = createElement(form, 'select', { 'class': 'form-control mr-1', 'name': 'source' });
                   var email = createElement(source, 'option', { 'value': 'email', 'innerHTML': 'email' });
                   var newsletter = createElement(source, 'option', { 'value': 'newsletter', 'innerHTML': 'newsletter' });
@@ -210,9 +229,10 @@
                 var thead = createElement(table, 'thead', { 'class': 'thead-light' });
                   var tr = createElement(thead, 'tr');
                     var th1 = createElement(tr, 'th', { 'scope': 'col', 'style': 'width: 3%', 'innerHTML': '#' });
-                    var th2 = createElement(tr, 'th', { 'scope': 'col', 'style': 'width: 7%', 'innerHTML': 'Source' });
-                    var th3 = createElement(tr, 'th', { 'scope': 'col', 'innerHTML': 'Lien' });
-                    var th4 = createElement(tr, 'th', { 'scope': 'col', 'style': 'width: 5%', 'innerHTML': '' });
+                    var th2 = createElement(tr, 'th', { 'scope': 'col', 'style': 'width: 15%', 'innerHTML': 'Description' });
+                    var th3 = createElement(tr, 'th', { 'scope': 'col', 'style': 'width: 7%', 'innerHTML': 'Source' });
+                    var th4 = createElement(tr, 'th', { 'scope': 'col', 'innerHTML': 'Lien' });
+                    var th5 = createElement(tr, 'th', { 'scope': 'col', 'style': 'width: 5%' });
                 var tbody = createElement(table, 'tbody');
                   if (obj.links.length !== 0) obj.links.forEach(link => injectNewLink(tbody, link, obj.id));
 
@@ -241,6 +261,7 @@
           var anchor = url.split('#')[1] || '';
 
           var obj = {
+            'description': elt.querySelector('input[name="description"]').value,
             'source': elt.querySelector('select[name="source"]').value,
             'page': page,
             'parameters': parameters,
@@ -265,6 +286,7 @@
           storage.save('campaigns', campaigns);
 
           // Reset form
+          elt.querySelector('input[name="description"]').value = "";
           elt.querySelector('input[name="url"]').value = "";
           elt.querySelector('input[name="url"]').className = "form-control mr-1";
         } else {
@@ -280,8 +302,9 @@
         // Create new row
         var tr = createElement(table, 'tr');
           var num = createElement(tr, 'td', { 'style': 'font-size: .85em', 'innerHTML': rows.length + 1 });
+          var description = createElement(tr, 'td', { 'style': 'font-size: .85em', 'innerHTML': obj.description });
           var source = createElement(tr, 'td', { 'style': 'font-size: .85em', 'innerHTML': obj.source });
-          var url = createElement(tr, 'td', { 'style': 'font-size: .85em', 'innerHTML': obj.url });
+          var url = createElement(tr, 'td', { 'class': 'url', 'onclick': 'copyURL(this)', 'innerHTML': obj.url });
           var deleteColumn = createElement(tr, 'td', {});
           var deleteBtn = createElement(deleteColumn, 'button', {
             'style': 'font-size: .85em',
@@ -290,9 +313,20 @@
           });
       }
 
-      function deleteLink(id, index) {
-        console.log(id, index);
+      function deleteCampaign(id) {
+        var campaigns = storage.retrieve('campaigns');
 
+        var index = campaigns.findIndex(campaign => campaign.id === id);
+
+        index === 0 ? campaigns.shift() : campaigns.splice(index, index);
+
+        var card = document.querySelector('#h_' + id).parentElement;
+        card.remove();
+
+        storage.save('campaigns', campaigns);
+      }
+
+      function deleteLink(id, index) {
         var campaigns = storage.retrieve('campaigns');
 
         var campaign = campaigns.find(campaign => campaign.id === id);
@@ -310,6 +344,25 @@
         });
 
         storage.save('campaigns', campaigns);
+      }
+
+      function copyURL(elt) {
+        var input = createElement(document.body, 'input', { 'type': 'text', 'name': 'clipboard', 'value': elt.innerText });
+
+        input.select();
+        input.setSelectionRange(0, 99999);
+
+        document.execCommand('copy');
+
+        input.remove();
+
+        var message = createElement(document.body, 'div', {
+          'style': 'position: fixed; top: 1em; right: 1em; font-size: .8em; font-weight: bold; background-color: #000; color: #FFF; opacity: .8; padding: .6em .8em; border-radius: .4em;',
+          'innerHTML': 'Copié !'
+        });
+
+        setTimeout(() => message.remove(), 2000);
+
       }
 
       function load() {
