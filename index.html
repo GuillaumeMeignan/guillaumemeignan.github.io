@@ -33,13 +33,7 @@
         <select class="form-control" name="marque">
           <option value="CM">Crédit Mutuel</option>
           <option value="CIC">CIC</option>
-        </select>
-
-        <select class="form-control" name="marche">
-          <option value="PAR">Particuliers</option>
-          <option value="PRO">Professionnels</option>
-          <option value="AGRI">Agriculteurs</option>
-          <option value="OBNL">Associations</option>
+          <option value="BECM">BECM</option>
         </select>
 
         <select class="form-control" name="annee">
@@ -60,6 +54,14 @@
           <option value="10">octobre</option>
           <option value="11">novembre</option>
           <option value="12">décembre</option>
+        </select>
+
+        <select class="form-control" name="marche">
+          <option value="par">Particuliers</option>
+          <option value="pro">Professionnels</option>
+          <option value="ent">Entreprises</option>
+          <option value="agri">Agriculteurs</option>
+          <option value="obnl">Associations</option>
         </select>
       </div>
 
@@ -93,6 +95,25 @@
           return data;
         }
       };
+
+      function getMedium(source) {
+        switch (source) {
+          case 'email':
+            return 'email';
+
+          case 'newsletter':
+            return 'email';
+
+          case 'signature':
+            return 'signature';
+
+          case 'sms':
+            return 'sms';
+
+          case 'print':
+            return 'print';
+          }
+      }
 
       function createElement(parent, elt, options) {
         var elt = document.createElement(elt);
@@ -128,17 +149,19 @@
       }
 
       function download(id) {
-        const data = [['URLs']];
+        const data = [['DESCRIPTION', 'SOURCE', 'URL']];
 
         const rows = document.querySelectorAll(`div[data-campaign=${id}] > table > tbody > tr`);
 
         rows.forEach(row => {
-          let url = row.querySelector('td:nth-child(3)').innerText;
+          let description = row.querySelector('td:nth-child(2)').innerText;
+          let source = row.querySelector('td:nth-child(3)').innerText;
+          let url = row.querySelector('td:nth-child(4)').innerText;
           url = url.replace(/\&amp;/gi, '26');
-          data.push([url]);
+          data.push([description, source, url]);
         });
 
-        console.log(data);
+        // console.log(data);
 
         let csvContent = "data:text/csv;charset=utf-8,"
           + data.map(e => e.join(",")).join("\n");
@@ -161,7 +184,7 @@
           'links': []
         };
 
-        obj.id = obj.brand + "_" + obj.market + "_" + obj.year + "-" + obj.month + "_" + camelize(obj.title);
+        obj.id = obj.brand + "_" + obj.year + "-" + obj.month + "_" + obj.market + "_" + camelize(obj.title);
 
         var campaigns = storage.retrieve('campaigns');
 
@@ -270,7 +293,7 @@
           }
 
           // Build url with UTM
-          obj.url = obj.page + "?utm_source=" + obj.source + "&utm_medium=" + obj.source + "&utm_campaign=" + id;
+          obj.url = obj.page + "?utm_source=" + obj.source + "&utm_medium=" + getMedium(obj.source) + "&utm_campaign=" + id;
           if (obj.parameters !== '') obj.url = obj.url + "&" + obj.parameters;
           if (obj.anchor !== '') obj.url = obj.url + "#" + obj.anchor;
 
